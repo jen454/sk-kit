@@ -30,6 +30,5 @@
 | `log_decision` | 배정 기준 등 중요한 판단을 했을 때 |
 | `log_ai_usage` | AI에게 맡긴 작업 하나를 끝냈을 때 |
 | `coverage_report` | 구현·검증 중간 점검 |
-| `answer_brief` | 제출 전 복습. 실제 코드에서 API·테이블·핵심 함수·에러·약점 추출 |
-| `interview_questions` | 제출 전 리허설. 내 파일을 분석해 함수 단위 질문 생성 |
+| `structure_summary` | 마무리. 실제 코드 기준으로 ARCHITECTURE.md에 '실제 구현 요약' 작성 → 사용자가 읽고 제출 |
 | `fill_forms` | 주최측 제출 양식을 작업 기록으로 채움 |

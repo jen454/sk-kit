@@ -28,33 +28,13 @@ PHASES = [
     {"id": 6, "name": "정리", "file": None},
 ]
 
-EXPLAIN_BACK = {
-    1: ["필수 요구사항 중 가장 구현이 어려운 것은 무엇이고 왜인가요?",
-        "모호했던 점에서 세운 가정이 틀렸다면 무엇이 바뀌나요?"],
-    2: ["데이터에서 발견한 가장 중요한 사실을 숫자로 말해보세요.",
-        "이상값/결측치를 어떻게 처리했고, 그 처리가 결과에 어떤 영향을 주나요?"],
-    3: ["사용자가 주요 버튼을 눌렀을 때 요청이 어떤 계층을 거쳐 DB까지 가나요?",
-        "비즈니스 규칙 검사는 어느 계층에서 하나요? 왜 프론트엔드가 아닌가요?",
-        "이 기술 스택을 고른 이유와 포기한 대안은 무엇인가요?"],
-    4: ["방금 만든 코드 중 가장 핵심인 함수는 무엇이고 어떤 입력/출력을 가지나요?",
-        "여기서 에러가 나면 어디서 잡히고 사용자는 무엇을 보나요?"],
-    5: ["실패하거나 검증 못 한 요구사항이 있다면 이유와 계획은?",
-        "가장 위험한 엣지 케이스는 무엇이었나요?"],
-    6: ["2분 안에 서비스 구조와 핵심 판단을 설명해 보세요."],
-}
-
-INTERVIEW_BANK = {
-    "아키텍처": ["전체 아키텍처를 설명해 주세요. 왜 이렇게 나눴나요?",
-              "사용자가 1만 명으로 늘면 어디가 먼저 병목이 되나요?",
-              "인증/권한은 어떻게 처리했나요? 안 했다면 어떻게 하겠어요?"],
-    "데이터 흐름": ["제공된 데이터가 DB에 들어가서 화면에 보이기까지의 흐름을 설명해 주세요.",
-               "운영자가 데이터를 수정하면 사용자 화면에는 언제 반영되나요?",
-               "두 운영자가 동시에 같은 자원을 수정하면 어떻게 되나요?"],
-    "에러 처리": ["잘못된 입력이 들어오면 어디서 막나요?",
-              "외부/DB 오류가 나면 사용자에게 무엇이 보이나요?",
-              "데이터 파일에 깨진 행이 있으면 어떻게 하나요?"],
-    "검증": ["요구사항을 모두 만족한다는 걸 어떻게 확인했나요?",
-           "AI가 만든 코드에서 직접 찾아 고친 문제가 있나요?"],
+EXPLAIN_POINTS = {
+    1: "필수 요구사항, 내가 정한 가정, 실무자 에이전트에게 확인한 내용",
+    2: "데이터의 핵심 숫자, 정제 규칙과 그 이유",
+    3: "요청이 router → service → repository를 거치는 경로, 규칙 검사 위치, 스택 선택 이유",
+    4: "구현한 핵심 함수와 에러가 잡히는 위치",
+    5: "검증 결과와 남은 한계",
+    6: "서비스 구조와 핵심 판단",
 }
 
 
@@ -202,15 +182,13 @@ def tool_phase_advance(args):
                 + "\n\n(정말 넘어가야 하면 force=true와 reason을 주세요. 사유는 기록됩니다.)")
     state["history"].append({"phase": p, "done_at": _now(),
                              "forced": bool(missing), "reason": args.get("reason", "")})
-    qs = EXPLAIN_BACK.get(p, [])
+    point = EXPLAIN_POINTS.get(p, "")
     if p < 6:
         state["phase"] = p + 1
     _save_state(root, state)
     nxt = PHASES[state["phase"] - 1]["name"] if p < 6 else "완료"
-    return ("%d단계(%s) 완료 → 다음: %s\n\n"
-            "다음으로 넘어가기 전에, 사용자가 아래 질문에 직접 답하게 하세요(AI가 대신 답하지 말 것):\n"
-            % (p, PHASES[p - 1]["name"], nxt)
-            + "\n".join("- " + q for q in qs))
+    return ("%d단계(%s) 완료 → 다음: %s\n\n사용자에게 이번 단계 결과를 3줄 이내로 설명하세요: %s"
+            % (p, PHASES[p - 1]["name"], nxt, point))
 
 
 def tool_log_decision(args):
@@ -228,7 +206,7 @@ def tool_log_decision(args):
         f.write(block)
     _save_state(root, state)
     empty = [label for label, key in fields if not args.get(key)]
-    note = ("\n비어 있는 항목: %s (나중에 채우세요. 특히 '검증'은 면접 단골 질문입니다)" % ", ".join(empty)) if empty else ""
+    note = ("\n비어 있는 항목: %s (나중에 채우세요. 특히 '검증'은 판단이 맞았다는 근거입니다)" % ", ".join(empty)) if empty else ""
     return "D%d 기록 완료.%s" % (n, note)
 
 
@@ -330,105 +308,33 @@ def _analyze(root):
     return a
 
 
-def _project_questions(root):
-    a = _analyze(root)
-    qs = []  # (category, question, where to look)
-    service_funcs = [f for f in a["core_funcs"] if "service" in f[2]] or a["core_funcs"]
-    write_routes = [r for r in a["routes"] if r[0] != "GET"]
-
-    qs.append(("아키텍처", "전체 구조를 30초 안에 설명해 주세요. 파일/폴더를 왜 이렇게 나눴나요?",
-               "AGENTS.md 표준 구조, docs/ARCHITECTURE.md"))
-    for method, path, rel, handler in write_routes[:3]:
-        qs.append(("데이터 흐름", "`%s %s` 요청이 들어오면 DB에 저장될 때까지 어떤 함수들을 거치나요?" % (method, path),
-                   "%s의 %s → 호출하는 service → repository" % (rel, handler or "핸들러")))
-    for size, name, rel in service_funcs[:3]:
-        qs.append(("핵심 로직", "`%s`(%s, %d줄)는 무슨 일을 하나요? 입력과 출력, 판단 기준은?" % (name, rel, size),
-                   "%s 직접 읽기" % rel))
-    if a["loaders"]:
-        qs.append(("데이터 흐름", "제공된 데이터는 어디서 읽어서 어떻게 검증하고 넣나요? 깨진 행은요?",
-                   ", ".join(sorted(set(a["loaders"])))))
-    if a["tables"]:
-        names = ", ".join(sorted(set(t for t, _ in a["tables"])))
-        qs.append(("데이터 모델", "테이블(%s) 사이 관계를 설명하고, 왜 이렇게 나눴나요?" % names,
-                   ", ".join(sorted(set(r for _, r in a["tables"])))))
-    custom = {k: v for k, v in a["raises"].items() if k not in ("ValueError", "TypeError", "Exception")}
-    if custom:
-        k = sorted(custom)[0]
-        qs.append(("에러 처리", "`%s`는 언제 발생하고, 사용자는 어떤 응답(상태 코드, 메시지)을 받나요?" % k,
-                   ", ".join(sorted(custom[k]))))
-    if a["handlers"]:
-        qs.append(("에러 처리", "예상하지 못한 오류가 나면 어떻게 되나요? 내부 정보가 노출되지 않나요?",
-                   ", ".join(sorted(set(a["handlers"])))))
-    else:
-        qs.append(("에러 처리", "전역 에러 핸들러가 보이지 않습니다. 처리 안 된 예외가 나면 사용자는 무엇을 보나요?",
-                   "main.py (없다면 지금 추가 고려)"))
-    for rel in a["broad_except"][:2]:
-        qs.append(("에러 처리", "`%s`에서 예외를 넓게 잡은 이유는? 그러면 숨겨지는 오류는 없나요?" % rel, rel))
-    if write_routes:
-        qs.append(("동시성", "두 사람이 동시에 같은 자원에 쓰기 요청(%s %s)을 보내면 어떻게 되나요?"
-                   % (write_routes[0][0], write_routes[0][1]),
-                   "트랜잭션/정원 재확인 위치 (%s)" % ("트랜잭션 코드 있음" if a["tx"] else "트랜잭션 코드 없음")))
-    qs.append(("보안/권한", "운영자 기능을 일반 사용자가 호출하지 못하게 어떻게 막나요?",
-               "권한 관련 코드 %s" % ("있음" if a["auth"] else "없음 → '안 했다면 이렇게 하겠다'로 답 준비")))
-    if a["fetches"]:
-        qs.append(("화면 연동", "화면은 어떤 API를 부르나요(%s)? 실패하면 화면에 무엇이 보이나요?"
-                   % ", ".join(sorted(a["fetches"])[:4]), "static/ 또는 web/의 JS"))
-    for d in re.findall(r"^## (D\d+\. .+)$", _read(_doc(root, "DECISIONS.md")) or "", re.M):
-        qs.append(("판단 기준", "'%s': 왜 이 기준인가요? 예외 상황은? 맞는지 어떤 지표로 확인했나요?" % d, "docs/DECISIONS.md"))
-    report = _strip_comments(_read(_doc(root, "TEST_REPORT.md")))
-    unverified = [r for r in _req_ids(root) if not re.search(r"\b%s\b.*✅" % r, report)]
-    if unverified:
-        qs.append(("검증", "%s는 검증이 안 됐거나 실패했습니다. 이유와 해결 계획은?" % ", ".join(unverified),
-                   "docs/TEST_REPORT.md"))
-    qs.append(("검증", "요구사항을 만족한다는 걸 어떻게 확인했나요? (테스트 %d개)" % a["tests"], "tests/, docs/TEST_REPORT.md"))
-    qs.append(("AI 활용", "AI가 만든 결과에서 직접 찾아 고친 문제를 하나 말해 주세요.", "docs/AI_USAGE_LOG.md 검증 칸"))
-    return a, qs
-
-
-def tool_interview_questions(args):
-    root = _root(args)
-    a, qs = _project_questions(root)
-    out = ["# 제출 직후 면접 예상 질문 (프로젝트 파일 %d개, API %d개 분석)" % (a["files"], len(a["routes"])), ""]
-    for n, (cat, q, where) in enumerate(qs, 1):
-        out.append("%d. [%s] %s\n   - 확인할 곳: %s" % (n, cat, q, where))
-    out.append("\n실제 시험: 서술형 6문항, 문항당 5분, AI 사용 불가, 복사·붙여넣기 불가. 사용자가 직접 타이핑한다.")
-    out.append("답변 형식(3~5문장): 결론 한 문장 → 근거(파일·함수 이름) → 예시나 지표 → 남은 한계. "
-               "질문의 전제가 실제 구현과 다르면 차이를 먼저 밝힌다.")
-    out.append("리허설 방법: AI는 질문을 하나씩만 내고, 사용자가 답하면 빈틈(근거·지표·예외 누락)만 지적한 뒤 다음 질문으로. "
-               "AI가 모범답안을 먼저 말하지 말 것. 답을 못 한 질문은 해당 파일을 같이 읽고 다시 답하게 할 것.")
-    return "\n".join(out)
-
-
-def tool_answer_brief(args):
-    """One-page brief of the actual project for the last review before submission."""
+def tool_structure_summary(args):
+    """Facts from the actual code, for writing the as-built summary in ARCHITECTURE.md."""
     root = _root(args)
     a = _analyze(root)
-    out = ["# 제출 전 10분 복습 노트 (자동 생성)", "", "## API 목록", "| 메서드 | 경로 | 파일 | 핸들러 |", "|---|---|---|---|"]
-    out += ["| %s | %s | %s | %s |" % r for r in a["routes"]] or ["| - | - | - | - |"]
-    out += ["", "## 테이블", "- " + (", ".join("%s (%s)" % t for t in sorted(set(a["tables"]))) or "(못 찾음)")]
-    out += ["", "## 핵심 함수 (긴 순서)"] + ["- %s (%s, %d줄)" % (n, r, s) for s, n, r in a["core_funcs"][:8]]
-    out += ["", "## 에러", "- 직접 던지는 예외: " + (", ".join(sorted(a["raises"])) or "없음"),
+    out = ["# 실제 구현 사실 (코드 정적 분석, 파일 %d개)" % a["files"], "", "## API"]
+    out += ["- %s %s → %s (%s)" % (m, path, h or "?", rel) for m, path, rel, h in a["routes"]] or ["- (못 찾음)"]
+    out += ["", "## 테이블: " + (", ".join("%s (%s)" % t for t in sorted(set(a["tables"]))) or "(못 찾음)")]
+    out += ["", "## 핵심 함수 (긴 순서)"] + ["- %s (%s, %d줄)" % (n, r, sz) for sz, n, r in a["core_funcs"][:8]]
+    out += ["", "## 에러",
+            "- 직접 던지는 예외: " + (", ".join("%s (%s)" % (k, ", ".join(sorted(v))) for k, v in sorted(a["raises"].items())) or "없음"),
             "- 전역 핸들러: " + (", ".join(sorted(set(a["handlers"]))) or "없음"),
             "- 넓게 잡는 except: " + (", ".join(a["broad_except"]) or "없음")]
-    out += ["", "## 데이터 적재", "- " + (", ".join(sorted(set(a["loaders"]))) or "(못 찾음)")]
-    decisions = _read(_doc(root, "DECISIONS.md")) or ""
-    out += ["", "## 판단 기준"] + ["- " + d for d in re.findall(r"^## (D\d+\. .+)$", decisions, re.M)]
-    out += ["", "## 약점 (질문 나오면 '알고 있고, 이렇게 하겠다'로 답하기)"]
-    weak = []
-    if not a["handlers"]:
-        weak.append("전역 에러 핸들러 없음")
-    if not a["auth"]:
-        weak.append("권한 구분 코드 없음")
-    if not a["tx"]:
-        weak.append("트랜잭션/동시성 처리 흔적 없음")
-    if a["tests"] == 0:
-        weak.append("자동 테스트 없음")
-    out += ["- " + w for w in weak] or ["- (자동 탐지된 약점 없음)"]
-    path = os.path.join(root, ".workflow", "ANSWER_BRIEF.md")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(out) + "\n")
-    return "\n".join(out) + "\n\n(.workflow/ANSWER_BRIEF.md에 저장. 제출물에 넣을지는 사용자가 결정)"
+    out += ["", "## 데이터 적재: " + (", ".join(sorted(set(a["loaders"]))) or "(못 찾음)"),
+            "## 화면이 부르는 API: " + (", ".join(sorted(a["fetches"])) or "(못 찾음)"),
+            "## 권한 처리 흔적: %s / 트랜잭션 흔적: %s / 테스트 함수: %d개"
+            % ("있음" if a["auth"] else "없음", "있음" if a["tx"] else "없음", a["tests"])]
+    out += ["", "# 작성 지시",
+            "docs/ARCHITECTURE.md 맨 아래에 '## 실제 구현 요약' 절을 만들거나 갱신한다. 계획이 아니라 **지금 코드 기준**으로, 위 사실과 코드를 직접 읽어서 쓴다.",
+            "1. 전체 구조: 폴더·파일별 역할 한 줄씩",
+            "2. 요청 흐름: 핵심 기능 2~3개를 화면 → router 함수 → service 함수 → repository → DB 순서로, 실제 함수 이름으로",
+            "3. 데이터 구조: 테이블과 관계, 제공 데이터를 적재하는 방법, 깨진 데이터 처리",
+            "4. 에러 처리: 어떤 상황에 어떤 예외 → 어떤 상태 코드·메시지 → 화면에 어떻게 보이는지",
+            "5. 판단 기준: DECISIONS.md의 각 판단을 한 줄로 (기준 → 이유 → 검증 지표)",
+            "6. 남은 한계: 위 사실에서 '없음'으로 나온 항목(권한, 트랜잭션, 테스트 등) 중 해당하는 것과 개선 방향",
+            "설계 계획과 실제 구현이 달라진 부분이 있으면 '계획과 달라진 점'으로 밝힌다. 짧고 평이한 문장으로 쓴다.",
+            "다 쓰면 사용자에게 이 절을 읽어 보라고 안내한다."]
+    return "\n".join(out)
 
 
 KIT_DOCS = {"README.md", "AGENTS.md"}
@@ -476,7 +382,7 @@ def tool_fill_forms(args):
             "## 판단 (docs/DECISIONS.md)\n" + get("DECISIONS.md"),
             "## 검증 (docs/TEST_REPORT.md)\n" + get("TEST_REPORT.md"),
             "## AI 활용 (docs/AI_USAGE_LOG.md)\n" + get("AI_USAGE_LOG.md"),
-            "## 작업 방식\n- AGENTS.md 규칙과 exam-workflow MCP(단계 관문, 판단·AI 활용 기록, 요구사항 추적, 면접 리허설)를 "
+            "## 작업 방식\n- AGENTS.md 규칙과 exam-workflow MCP(단계 관문, 판단·AI 활용 기록, 요구사항 추적, 구현 구조 요약)를 "
             "직접 만들어 사용함. 서비스 코드는 사전에 준비하지 않음.",
             "",
             "# 작성 지시",
@@ -507,8 +413,7 @@ TOOLS = {
     "log_ai_usage": (tool_log_ai_usage, "AI에게 맡긴 일과 검증 내용을 AI_USAGE_LOG.md에 한 줄 기록한다. 의미 있는 작업마다 호출.",
                      _schema({"task": S, "result": S, "verification": S}, ["task"])),
     "coverage_report": (tool_coverage_report, "요구사항 ID별 설계/코드/검증 추적표를 만든다.", _schema()),
-    "interview_questions": (tool_interview_questions, "프로젝트 코드와 문서를 분석해 제출 직후 나올 면접 질문(파일·함수 단위)을 만든다. 제출 전 리허설용.", _schema()),
-    "answer_brief": (tool_answer_brief, "실제 코드에서 API·테이블·핵심 함수·에러·약점을 뽑아 제출 전 10분 복습 노트를 만든다.", _schema()),
+    "structure_summary": (tool_structure_summary, "실제 코드를 분석해 API·테이블·핵심 함수·에러 처리·한계를 뽑고, ARCHITECTURE.md에 '실제 구현 요약'을 쓰도록 안내한다. 마무리 단계에서 사용.", _schema()),
     "fill_forms": (tool_fill_forms, "주최측이 제공한 제출 양식 파일의 목차를 읽고, 작업 기록을 근거 자료로 모아 그 파일을 채우도록 안내한다. forms를 생략하면 양식 파일을 자동으로 찾는다.",
                    _schema({"forms": {"type": "array", "items": {"type": "string"}, "description": "양식 파일 경로들 (프로젝트 기준 상대경로)"}})),
 }
