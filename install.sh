@@ -13,8 +13,16 @@ mkdir -p "$ROOT/docs"
 for f in "$KIT"/templates/*.md; do
   [ -e "$ROOT/docs/$(basename "$f")" ] || cp "$f" "$ROOT/docs/"
 done
-[ -e "$ROOT/AGENTS.md" ] || cp "$KIT/AGENTS.md" "$ROOT/AGENTS.md"
-echo "[O] $ROOT 에 AGENTS.md, docs/ 생성"
+if [ -e "$ROOT/AGENTS.md" ] && ! grep -q "exam-workflow" "$ROOT/AGENTS.md"; then
+  # 과제에 이미 AGENTS.md가 있으면 건드리지 않고, 키트 규칙은 별도 파일로 둔다
+  cp "$KIT/AGENTS.md" "$ROOT/docs/KIT_RULES.md"
+  echo "[!] 과제에 원래 있던 AGENTS.md는 그대로 둠. 키트 규칙은 docs/KIT_RULES.md에 복사"
+  echo "    → Codex 첫 요청: 'AGENTS.md와 docs/KIT_RULES.md를 읽고 둘 다 따라줘. 충돌하면 AGENTS.md(과제 쪽)가 우선이야.'"
+else
+  [ -e "$ROOT/AGENTS.md" ] || cp "$KIT/AGENTS.md" "$ROOT/AGENTS.md"
+  echo "[O] AGENTS.md 생성 (Codex는 이 폴더에서 실행해야 자동으로 읽음. 이미 켜져 있었다면 다시 실행)"
+fi
+echo "[O] $ROOT/docs/ 양식 생성"
 
 if [ -z "$PY" ]; then
   echo "[X] python3 없음 → MCP 없이 AGENTS.md 규칙만으로 진행"; exit 0
