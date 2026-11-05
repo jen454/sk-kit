@@ -50,5 +50,5 @@ else
 JSON
 fi
 echo
-echo "다음: 터미널에서 codex 실행 → '/mcp'로 exam-workflow 확인 → 'exam-workflow의 kit_init 실행해줘'"
+echo "다음: 이 폴더에서 codex 실행 → 바로 작업 시작 (예: '요구사항 분석해줘. 아직 코드는 쓰지 마.')"
 echo "MCP가 안 붙어도: AGENTS.md와 docs/가 이미 복사되어 있으므로 규칙만으로 진행 가능 (MCP 탭이 없으면 --cli 옵션)"

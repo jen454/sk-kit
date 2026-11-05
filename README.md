@@ -17,14 +17,13 @@
    - 키트는 프로젝트 **밖**(`~/kit`)에 받아서 제출물에 섞이지 않게 합니다.
    - `AGENTS.md`와 `docs/` 템플릿을 복사하고, MCP 서버가 동작하는지 확인합니다.
 2. 출력된 JSON을 IDE 왼쪽 **MCP 탭**의 설정에 추가하고 저장합니다.
-3. `codex` 실행 → `/mcp`로 연결 확인 → "exam-workflow의 kit_init 실행해줘"
+3. 과제 폴더에서 `codex` 실행 → 바로 작업 시작
 - MCP 탭이 없을 때만: `bash ~/kit/install.sh --cli` (`codex mcp add`로 등록)
 - MCP가 끝내 안 붙으면 `AGENTS.md` 규칙만으로 진행합니다.
 
 ## 도구
 | 도구 | 언제 |
 |---|---|
-| `kit_init` | 시작 직후 1회 |
 | `phase_status` | 매 요청 시작 시 (AGENTS.md가 시킴) |
 | `phase_advance` | 단계를 마칠 때. 조건 미충족이면 막고, 통과하면 설명 질문을 냄 |
 | `log_decision` | 배정 기준 등 중요한 판단을 했을 때 |

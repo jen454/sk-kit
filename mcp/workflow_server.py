@@ -130,28 +130,6 @@ def _gate(root, phase):
 
 
 # ------------------------------------------------------------------ tools
-def tool_kit_init(args):
-    root = _root(args)
-    os.makedirs(os.path.join(root, DOCS), exist_ok=True)
-    created = []
-    for fn in sorted(os.listdir(TEMPLATE_DIR)):
-        dst = _doc(root, fn)
-        if not os.path.exists(dst):
-            shutil.copy(os.path.join(TEMPLATE_DIR, fn), dst)
-            created.append(fn)
-    agents_src = os.path.join(KIT_DIR, "AGENTS.md")
-    agents_dst = os.path.join(root, "AGENTS.md")
-    if os.path.exists(agents_src) and not os.path.exists(agents_dst):
-        shutil.copy(agents_src, agents_dst)
-        created.append("AGENTS.md")
-    state = _load_state(root)
-    state.setdefault("started", datetime.datetime.now().isoformat(timespec="minutes"))
-    _save_state(root, state)
-    return ("프로젝트 루트: %s\n생성한 파일: %s\n\n지금은 1단계(요구사항 분석)입니다. "
-            "문제를 읽고 docs/REQUIREMENTS.md를 R번호로 채우세요."
-            % (root, ", ".join(created) or "(이미 모두 있음)"))
-
-
 def tool_phase_status(args):
     root = _root(args)
     state = _load_state(root)
@@ -403,7 +381,6 @@ def _schema(props=None, required=None):
 
 S = {"type": "string"}
 TOOLS = {
-    "kit_init": (tool_kit_init, "프로젝트에 docs/ 템플릿과 AGENTS.md를 만들고 워크플로를 시작한다. 시험 시작 직후 1회.", _schema()),
     "phase_status": (tool_phase_status, "현재 단계와 다음 단계로 가기 위해 부족한 것을 보여준다. 작업 시작 전 항상 호출.", _schema()),
     "phase_advance": (tool_phase_advance, "현재 단계 조건을 검사하고 통과하면 다음 단계로 넘긴다. 사용자에게 던질 설명 질문을 돌려준다.",
                       _schema({"force": {"type": "boolean"}, "reason": S})),
