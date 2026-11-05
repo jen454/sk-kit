@@ -10,7 +10,6 @@ import datetime
 import json
 import os
 import re
-import shutil
 import sys
 
 KIT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
